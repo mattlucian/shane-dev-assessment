@@ -28,7 +28,12 @@ public class Main {
        specifyDataAccuracy(new Integer[]{6,5}); //the number of integers should match the number of files to process in /data_To_Process. 
                                                 // the numbers correspond to the file names in the folder sorted in ascending order.
        LoadVariables();
-       ProcessDataFiles();
+       try{
+           ProcessDataFiles();
+       }catch (Exception ex){
+           System.err.println("Failed to process data files, exiting");
+           return;
+       }
        saveEntriesAsProductFiles();
        bounceProductFiles();
     }
@@ -89,7 +94,7 @@ public class Main {
         }
     }
     
-    public static void ProcessDataFiles(){
+    public static void ProcessDataFiles() throws Exception {
         DetermineSkusToPRocess();
         ProcessFiles();
     }
@@ -162,7 +167,7 @@ public class Main {
         }
     }
     
-    public static void ProcessFiles(){
+    public static void ProcessFiles() throws Exception {
         finalEntryData = new HashMap<String, String[]>();
         highestEntryDataSourceAccuracy = new HashMap<String, Integer>();
         
@@ -179,34 +184,55 @@ public class Main {
         }
     }
     
-    public static void getCSV_Data(String filePath){
-       try {
-            CSVReader reader = new CSVReader(new FileReader(filePath));
-            String [] nextLine;
-            int headerPassed = 0;
-            String[] entryData;
-            while (( nextLine = reader.readNext()) != null) {
-                entryData = new String[6]; 
-                for (int x = 0; x < nextLine.length; x++ ){
-                    if(headerPassed == 1)
-                    {
-                        entryData[x] = ( nextLine[x] );
-                    }
-                    if (x == 5)
-                        headerPassed = 1;
+    public static void getCSV_Data(String filePath) throws Exception {
+
+        // new approach here :
+        List<Product> products = CsvUtil.importFrom(filePath, ',');
+
+        for(Product product : products){
+            addFinalData(
+                product, filePath
+            );
+        }
+
+
+        // old approach below :
+        /*
+        CSVReader reader = new CSVReader(new FileReader(filePath));
+        String [] nextLine;
+        int headerPassed = 0;
+        String[] entryData;
+        while (( nextLine = reader.readNext()) != null) {
+            entryData = new String[6];
+            for (int x = 0; x < nextLine.length; x++ ){
+                if(headerPassed == 1)
+                {
+                    entryData[x] = ( nextLine[x] );
                 }
-                String sku = entryData[2];
-                
-                addFinalData(sku, entryData, filePath);
+                if (x == 5)
+                    headerPassed = 1;
             }
-        }
-        catch (Exception e){
-            System.out.println(e.toString());
-        }
+            String sku = entryData[2];
+
+            addFinalData(sku, entryData, filePath);
+        } */
    }
     
-    public static void getTSV_Data(String fileName){
-       try {
+    public static void getTSV_Data(String fileName) throws Exception {
+
+        // new approach here
+        List<Product> products = CsvUtil.importFrom(fileName, '\t');
+
+        for(Product product : products){
+            addFinalData(
+                product, fileName
+            );
+        }
+
+
+        // old approach below
+        /*
+        try {
             FileInputStream inStream = new FileInputStream(fileName);
             BufferedReader br = new BufferedReader(new InputStreamReader(inStream));
             String lineFetched; String[] itemsFetched = new String[0]; int numLineFetched = 0;
@@ -224,9 +250,24 @@ public class Main {
         }
         catch(Exception e){
             System.out.println(e.toString());
-        }
+        } */
    }
-    
+
+
+   public static void addFinalData(Product product, String filePath){
+       if( SKUsToProcessThisRun.contains(product.sku) )
+       {
+           if (!highestEntryDataSourceAccuracy.containsKey( product.sku ) || highestEntryDataSourceAccuracy.get( product.sku ) < dataAccuracy.get( filePath ))
+           {
+               highestEntryDataSourceAccuracy.put( product.sku , dataAccuracy.get( filePath ));
+
+               //todo, make this "sku -> product" instead of "sku -> array of product fields"
+               //finalEntryData.put( product.sku, product);
+           }
+       }
+
+   }
+
     public static void addFinalData(String sku, String[] entryData, String filePath){
        if( SKUsToProcessThisRun.contains(sku) )
         {

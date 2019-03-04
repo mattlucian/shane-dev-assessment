@@ -6,6 +6,9 @@ public class Product implements java.io.Serializable {
     //I can easily adjust to such practice, but I think it's faster and more efficient to make only those variables that
     //aren't desired to be accessed or used private in the first place.
 
+
+    // ^ This protects the value at runtime so it cannot be accessed and manipulated. It also allows for
+
     public Product(String title, String upc, String sku, String price, String condition, String quantity){
         
         this.title = title;
