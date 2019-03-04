@@ -55,7 +55,9 @@ public class Main {
             try{
             alreadyProcessedSKUs = (HashSet)ReadObjectFromFile( "var/processedSKUs" ).readObject();
             }
-            catch (Exception e){System.out.println(e.toString());
+            catch (Exception e){
+                System.err.println("Failed to load already processed skus, continuing because we can re-cache products");
+                System.err.println(e.getMessage());
             }
         }
         else{
@@ -67,7 +69,8 @@ public class Main {
             dataAccuracy = (HashMap)ReadObjectFromFile( "var/dataAccuracy" ).readObject();
         }
         catch (Exception ex){
-            System.out.println("data accuracy file not found. Terminating program.");
+            // now this will actually get thrown, before it would not because "ReadObjectFromFile" was catching the exception
+            System.err.println("data accuracy file not found. Terminating program since we cannot continue without this information");
             System.exit(1);
         }
         
@@ -75,11 +78,13 @@ public class Main {
             try{
             alreadySavedProducts  = (Product[])ReadObjectFromFile("products/savedProducts").readObject();
             }
-            catch(Exception e){System.out.println(e.toString());
-               }
+            catch(Exception e){
+                System.err.println("Failed to load products that are saved, continuing because we can re-save");
+                System.out.println(e.getMessage());
+            }
         }
         else {
-            System.out.println("already saved Products List Not Found, passing null");
+            System.err.println("already saved Products List Not Found, passing null");
             alreadySavedProducts  = null;
         }
     }
@@ -281,16 +286,10 @@ public class Main {
        }
     }
     
-    public static ObjectInputStream ReadObjectFromFile(String filepath){
-        try{
-            FileInputStream fi = new FileInputStream(new File(filepath));
-            ObjectInputStream oi = new ObjectInputStream(fi);
-            return oi;
-        }
-        catch (Exception e){
-            System.out.println(e.toString());
-            return null;
-        }
+    public static ObjectInputStream ReadObjectFromFile(String filepath) throws Exception {
+        FileInputStream fi = new FileInputStream(new File(filepath));
+        ObjectInputStream oi = new ObjectInputStream(fi);
+        return oi;
     }
     
     public static void bounceProductFiles(){
