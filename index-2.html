@@ -1,0 +1,55 @@
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=utf-8"/><title>Unknown </title></head><body>
+<h1 id="developer-assessment-integrations">Developer Assessment - Integrations</h1>
+<p>The purpose of this assessment is to gauge development experience. The ideal candidate will use their experience to
+demonstrate well structured and efficient code with best practices considered.</p>
+<h1 id="rules">Rules</h1>
+<ol>
+<li>ALL CODE MUST BE WRITTEN INDEPENDENTLY BY YOU. Any applicant that copies code directly will disqualify his/her candidacy. </li>
+<li>You can leverage online resources to help, but must write original code.</li>
+<li>You can add any necessary PUBLIC MAVEN dependencies by adding them into the pom.xml file</li>
+</ol>
+<h1 id="assessment">Assessment</h1>
+<ol>
+<li>Start in the <code>Main.java</code> file and add code to the <code>util</code> and <code>domain</code> classes</li>
+<li>Parse the CSV and TSV files into Product objects</li>
+<li>Store all UNIQUE products in memory (with the most accurate information)</li>
+<li>Transform these products into two different data formats, JSON and XML</li>
+<li>Output these transformations to products.json and products.xml files</li>
+</ol>
+<h1 id="given-information">Given information :</h1>
+<ol>
+<li>You are given two input files : </li>
+<li>products.csv</li>
+<li>products.tsv</li>
+<li>These files contain a list of products</li>
+<li>The CSV and TSV are both valid formats</li>
+<li>A product's uniqueness is determined by it's SKU (if two products have the same SKU, then they are the same product)</li>
+<li>products.csv contains more accurate information than products.tsv</li>
+<li>The provided project is a Maven project and should remain in this structure</li>
+<li>PUBLIC MAVEN third party libraries are allowed for parsing &amp; transforming data </li>
+<li>An example dependency has been added to demonstrate this (<code>com.opencsv</code>). Using this dependency is NOT required, but is allowed.</li>
+</ol>
+<h4 id="building-project">Building project</h4>
+<pre><code>    mvn package
+</code></pre>
+<p>This will create a .jar file named dev-assessment-1.0.jar in the <code>/target</code> directory</p>
+<h4 id="running-build-jar-file">Running build (.jar file)</h4>
+<pre><code>    java -jar target/dev-assessment-1.0.jar
+</code></pre>
+<p>We will run the above commands to build/run your assessment. Please ensure running these commands works before submitting your project.</p>
+<p>On a Linux/UNIX system - this can also be done by running the <code>run.sh</code> file</p>
+<pre><code>    sh run.sh
+</code></pre>
+<h1 id="submission">Submission</h1>
+<ol>
+<li>Provide your entire project (including source code) in a .zip file</li>
+<li>Provide the number of hours it took for you to complete the assessment</li>
+</ol>
+<h2 id="hints">Hints</h2>
+<ul>
+<li>A CSV record may contain a comma in it that's not a delimiter </li>
+<li>XML files always require a root node</li>
+</ul>
+<h2 id="closing-remarks">Closing remarks</h2>
+<p>If you are unsure about anything - please make your best assumption and document that assumption in <code>assumptions.txt</code> file provided</p>
+</body></html>
