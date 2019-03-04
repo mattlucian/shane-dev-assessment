@@ -15,334 +15,67 @@ import java.util.HashSet;
 import java.util.*;
 import com.opencsv.*;
 
+import javax.xml.parsers.ParserConfigurationException;
+import javax.xml.transform.TransformerConfigurationException;
+import javax.xml.transform.TransformerException;
+
 
 public class Main {
     static HashSet alreadyProcessedSKUs, SKUsToProcessThisRun;
-    static Map<String, Integer> dataAccuracy;
     static Map<String, String[]> finalEntryData;
     static Map<String, Integer> highestEntryDataSourceAccuracy;
     static Product[] alreadySavedProducts, finalProducts;
 
+
+    /**
+     *
+     * The goals :
+     *
+     * - Have an "accuracy" component for incoming files
+     * - Parse through the "csv" or "tsv" files in the folder
+     * - Output this data in XML / JSON
+     *
+     *
+     * @param args
+     */
+
     public static void main(String[] args) {
 
-        // specify data accuracy
-        specifyDataAccuracy(new Integer[]{6,5}); //the number of integers should match the number of files to process in /data_To_Process.
-                                                // the numbers correspond to the file names in the folder sorted in ascending order.
+        // create a process to work with
+        AssessmentProcess process = new AssessmentProcess();
 
-        // load cached files
-        loadCache();
-
-        // try to process the files
+        // configure the process
         try{
-            determineSkusToProcess();
-
-            processFiles();
+            process.configure();
 
         }catch (Exception ex){
-            System.err.println("Failed to process data files, exiting");
+            System.err.println("Failed to configure data accuracy, exiting");
+            ex.printStackTrace();
             return;
         }
 
-        // save products from files
-        saveEntriesAsProductFiles();
 
-        // write xml / json files
-        bounceProductFiles();
-    }
-    
-    public static void specifyDataAccuracy(Integer[] accuracies){
-        dataAccuracy = new HashMap<String,Integer>();
-        File[] files = new File("data_To_Process").listFiles();
-        Arrays.sort( files );
-        
-        if (files.length != accuracies.length){
-            System.out.println("accuracies list does not match number of data files to process. Please enter a vailid data accuracy list.");
-            System.exit(1);
-        }
-        
-        for (int x = 0; x < files.length; x++)
-        {
-            dataAccuracy.put( files[x].toString() , accuracies[x] );
-        }
-        WriteObjectToFile(dataAccuracy, "var/dataAccuracy");
-    }
-    
-    public static void loadCache(){
-        if (new File("var/processedSKUs").exists()){
-            try{
-            alreadyProcessedSKUs = (HashSet)ReadObjectFromFile( "var/processedSKUs" ).readObject();
-            }
-            catch (Exception e){
-                System.err.println("Failed to load already processed skus, continuing because we can re-cache products");
-                System.err.println(e.getMessage());
-            }
-        }
-        else{
-            alreadyProcessedSKUs = new HashSet();
-            System.out.println("already processed skus file not found. new file instantiated");
-        }
-        
+        // parse files from the process
         try{
-            dataAccuracy = (HashMap)ReadObjectFromFile( "var/dataAccuracy" ).readObject();
+            process.parseFiles();
+
+        }catch (Exception ex){
+            System.err.println("Failed to process data files, exiting");
+            ex.printStackTrace();
+            return;
         }
-        catch (Exception ex){
-            // now this will actually get thrown, before it would not because "ReadObjectFromFile" was catching the exception
-            System.err.println("data accuracy file not found. Terminating program since we cannot continue without this information");
-            System.exit(1);
+
+
+        // output files from the process
+        try{
+            process.outputFiles();
+
+        }catch (Exception ex){
+            System.err.println("Failed to putput data files, exiting");
+            ex.printStackTrace();
         }
-        
-        if (new File("products/savedProducts").exists()){
-            try{
-            alreadySavedProducts  = (Product[])ReadObjectFromFile("products/savedProducts").readObject();
-            }
-            catch(Exception e){
-                System.err.println("Failed to load products that are saved, continuing because we can re-save");
-                System.out.println(e.getMessage());
-            }
-        }
-        else {
-            System.err.println("already saved Products List Not Found, passing null");
-            alreadySavedProducts  = null;
-        }
+
     }
+
     
-
-    public static void determineSkusToProcess() {
-        SKUsToProcessThisRun = new HashSet();
-        
-        File[] files = new File("data_To_Process").listFiles();
-        for (File file : files) {
-            if (file.toString().contains(".csv")) {
-                identifyNewSKU_CSV(file.toString());
-            } else if (file.toString().contains(".tsv")) {
-                identifyNewSKU_TSV(file.toString());
-            } 
-        }
-        System.out.println(SKUsToProcessThisRun.size() + " = number Of Products processed this run" );
-    }
-    
-    public static void identifyNewSKU_CSV(String filePath) {
-        try {
-            CSVReader reader = new CSVReader(new FileReader(filePath));
-            String [] nextLine;
-            int headerPassed = 0;
-            while (( nextLine = reader.readNext()) != null) {
-                for (int x = 0; x < nextLine.length; x++ ){
-                    if(headerPassed == 1)
-                    {   if (x == 2)
-                        {
-                            if ( !alreadyProcessedSKUs.contains(nextLine[x]) )
-                            {
-                                SKUsToProcessThisRun.add( nextLine[x] );
-                            }
-                        }
-                    }
-                    if (x == 5)
-                        headerPassed = 1;
-                }
-            }
-        }
-        catch (Exception e){
-            System.out.println(e.toString());
-        }
-    }
-    
-    public static void identifyNewSKU_TSV(String fileName) {
-        try {
-            FileInputStream inStream = new FileInputStream(fileName);
-            BufferedReader br = new BufferedReader(new InputStreamReader(inStream));
-            String lineFetched; String[] itemsFetched = new String[0]; int numLineFetched = 0, entryNum = 0;
-            while ((lineFetched = br.readLine()) != null){
-                if (numLineFetched == 0)
-                    numLineFetched = 1;
-                else
-                    itemsFetched = lineFetched.split("\t");
-                    for(int x = 0; x < itemsFetched.length; x++)
-                    {
-                        if(x ==2)
-                        {
-                            ////System.out.println(itemsFetched[x]);
-                            if ( !alreadyProcessedSKUs.contains( itemsFetched[x]) )
-                            {
-                                SKUsToProcessThisRun.add( itemsFetched[x] );
-                            }
-                        }
-                    }
-            }
-        }
-        catch(Exception e){
-            System.out.println(e.toString());
-        }
-    }
-    
-    public static void processFiles() throws Exception {
-        finalEntryData = new HashMap<String, String[]>();
-        highestEntryDataSourceAccuracy = new HashMap<String, Integer>();
-        
-        File[] files = new File("data_To_Process").listFiles();
-        for (File file : files) {
-            if (file.toString().contains(".csv") &&  !file.toString().contains(".tsv") ) {
-                getCsvData(file.toString());
-            } else if (file.toString().contains(".tsv") &&  !file.toString().contains(".csv") ) {
-                getTsvData(file.toString());
-            } else{
-                System.out.println("data Formatted Inappropriately. Terminating Program");
-                System.exit(1);
-            }
-        }
-    }
-    
-    public static void getCsvData(String filePath) throws Exception {
-
-        // new approach here :
-        List<Product> products = CsvUtil.importFrom(filePath, ',');
-
-        for(Product product : products){
-            addFinalData(
-                product, filePath
-            );
-        }
-
-
-        // old approach below :
-        /*
-        CSVReader reader = new CSVReader(new FileReader(filePath));
-        String [] nextLine;
-        int headerPassed = 0;
-        String[] entryData;
-        while (( nextLine = reader.readNext()) != null) {
-            entryData = new String[6];
-            for (int x = 0; x < nextLine.length; x++ ){
-                if(headerPassed == 1)
-                {
-                    entryData[x] = ( nextLine[x] );
-                }
-                if (x == 5)
-                    headerPassed = 1;
-            }
-            String sku = entryData[2];
-
-            addFinalData(sku, entryData, filePath);
-        } */
-   }
-    
-    public static void getTsvData(String fileName) throws Exception {
-
-        // new approach here
-        List<Product> products = CsvUtil.importFrom(fileName, '\t');
-
-        for(Product product : products){
-            addFinalData(
-                product, fileName
-            );
-        }
-
-
-        // old approach below
-        /*
-        try {
-            FileInputStream inStream = new FileInputStream(fileName);
-            BufferedReader br = new BufferedReader(new InputStreamReader(inStream));
-            String lineFetched; String[] itemsFetched = new String[0]; int numLineFetched = 0;
-            while ((lineFetched = br.readLine()) != null){
-                if (numLineFetched == 0)
-                    numLineFetched = 1;
-                else
-                {
-                    itemsFetched = lineFetched.split("\t");
-                    String sku = itemsFetched[2];
-                
-                    addFinalData(sku, itemsFetched, fileName);
-                }
-            }
-        }
-        catch(Exception e){
-            System.out.println(e.toString());
-        } */
-   }
-
-
-   public static void addFinalData(Product product, String filePath){
-       if( SKUsToProcessThisRun.contains(product.sku) )
-       {
-           if (!highestEntryDataSourceAccuracy.containsKey( product.sku ) || highestEntryDataSourceAccuracy.get( product.sku ) < dataAccuracy.get( filePath ))
-           {
-               highestEntryDataSourceAccuracy.put( product.sku , dataAccuracy.get( filePath ));
-
-               //todo, make this "sku -> product" instead of "sku -> array of product fields"
-               //finalEntryData.put( product.sku, product);
-           }
-       }
-
-   }
-
-    public static void addFinalData(String sku, String[] entryData, String filePath){
-       if( SKUsToProcessThisRun.contains(sku) )
-        {
-            String[] insertionData = new String[entryData.length + 2];
-            System.arraycopy(entryData, 0, insertionData, 0, entryData.length);
-            
-            if (!highestEntryDataSourceAccuracy.containsKey( sku ) || highestEntryDataSourceAccuracy.get( sku ) < dataAccuracy.get( filePath ))
-            {
-                highestEntryDataSourceAccuracy.put( sku , dataAccuracy.get( filePath ));
-                insertionData[entryData.length] = String.valueOf( dataAccuracy.get( filePath ) );
-                insertionData[entryData.length+1] = filePath;
-                finalEntryData.put( sku, entryData);
-            }
-        }
-   }
-    
-    public static void saveEntriesAsProductFiles(){
-        if (alreadySavedProducts != null)
-        {   
-            finalProducts = new Product[ alreadySavedProducts.length + finalEntryData.size() ]; //creates an array big enough to house products stored in memory and new products found in last run. Final Products will always contain all unique products from all runs.
-            System.out.println(alreadySavedProducts.length + " products were loaded from memory" );
-        }
-        else
-        {
-            finalProducts = new Product[finalEntryData.size()];
-        }
-        
-        int iterator = 0;
-        for (Map.Entry pair : finalEntryData.entrySet()) { //adds all products found on this run to the finalProducts Product array
-            String[] entryData = (String[])pair.getValue();
-            finalProducts[iterator] = new Product( entryData[0], entryData[1], entryData[2], entryData[3], entryData[4], entryData[5]);
-            iterator+=1;
-            alreadyProcessedSKUs.add( entryData[2] ); //adds the unique SKUs encountered to a hash table for memory storage.
-        }
-        
-        if (alreadySavedProducts != null) 
-        {
-            for(int x = 0; x < alreadySavedProducts.length; x++)
-                finalProducts[finalEntryData.size() + x] = alreadySavedProducts[x]; //adds all products from memory to the end of the finalProducts array, which contained only those unique products found this run before this line.
-        }
-            
-        
-        WriteObjectToFile(finalProducts, "products/savedProducts");  
-        System.out.println( "final array of unique products succesfully saved to products/savedProducts. Contains unique products from all runs." );
-        WriteObjectToFile(alreadyProcessedSKUs, "var/processedSKUs"); 
-    }
-    
-    public static void WriteObjectToFile(Object serObj, String filepath){
-        try {
-            FileOutputStream fileOut = new FileOutputStream(filepath);
-            ObjectOutputStream objectOut = new ObjectOutputStream(fileOut);
-            objectOut.writeObject(serObj);
-            objectOut.close();
-       }
-       catch (Exception e){
-           System.out.println(e.toString());
-       }
-    }
-    
-    public static ObjectInputStream ReadObjectFromFile(String filepath) throws Exception {
-        FileInputStream fi = new FileInputStream(new File(filepath));
-        ObjectInputStream oi = new ObjectInputStream(fi);
-        return oi;
-    }
-    
-    public static void bounceProductFiles(){
-        ProductXmlUtil.bounceToXML(finalProducts);
-        ProductJsonUtil.bounceToJson(finalProducts);
-    }
 }
