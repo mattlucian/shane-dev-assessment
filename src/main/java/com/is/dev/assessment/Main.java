@@ -25,17 +25,29 @@ public class Main {
 
     public static void main(String[] args) {
 
-       specifyDataAccuracy(new Integer[]{6,5}); //the number of integers should match the number of files to process in /data_To_Process. 
+        // specify data accuracy
+        specifyDataAccuracy(new Integer[]{6,5}); //the number of integers should match the number of files to process in /data_To_Process.
                                                 // the numbers correspond to the file names in the folder sorted in ascending order.
-       LoadVariables();
-       try{
-           ProcessDataFiles();
-       }catch (Exception ex){
-           System.err.println("Failed to process data files, exiting");
-           return;
-       }
-       saveEntriesAsProductFiles();
-       bounceProductFiles();
+
+        // load cached files
+        loadCache();
+
+        // try to process the files
+        try{
+            determineSkusToProcess();
+
+            processFiles();
+
+        }catch (Exception ex){
+            System.err.println("Failed to process data files, exiting");
+            return;
+        }
+
+        // save products from files
+        saveEntriesAsProductFiles();
+
+        // write xml / json files
+        bounceProductFiles();
     }
     
     public static void specifyDataAccuracy(Integer[] accuracies){
@@ -55,7 +67,7 @@ public class Main {
         WriteObjectToFile(dataAccuracy, "var/dataAccuracy");
     }
     
-    public static void LoadVariables(){
+    public static void loadCache(){
         if (new File("var/processedSKUs").exists()){
             try{
             alreadyProcessedSKUs = (HashSet)ReadObjectFromFile( "var/processedSKUs" ).readObject();
@@ -94,12 +106,8 @@ public class Main {
         }
     }
     
-    public static void ProcessDataFiles() throws Exception {
-        DetermineSkusToPRocess();
-        ProcessFiles();
-    }
-    
-    public static void DetermineSkusToPRocess() {
+
+    public static void determineSkusToProcess() {
         SKUsToProcessThisRun = new HashSet();
         
         File[] files = new File("data_To_Process").listFiles();
@@ -167,16 +175,16 @@ public class Main {
         }
     }
     
-    public static void ProcessFiles() throws Exception {
+    public static void processFiles() throws Exception {
         finalEntryData = new HashMap<String, String[]>();
         highestEntryDataSourceAccuracy = new HashMap<String, Integer>();
         
         File[] files = new File("data_To_Process").listFiles();
         for (File file : files) {
             if (file.toString().contains(".csv") &&  !file.toString().contains(".tsv") ) {
-                getCSV_Data(file.toString());
+                getCsvData(file.toString());
             } else if (file.toString().contains(".tsv") &&  !file.toString().contains(".csv") ) {
-                getTSV_Data(file.toString());
+                getTsvData(file.toString());
             } else{
                 System.out.println("data Formatted Inappropriately. Terminating Program");
                 System.exit(1);
@@ -184,7 +192,7 @@ public class Main {
         }
     }
     
-    public static void getCSV_Data(String filePath) throws Exception {
+    public static void getCsvData(String filePath) throws Exception {
 
         // new approach here :
         List<Product> products = CsvUtil.importFrom(filePath, ',');
@@ -218,7 +226,7 @@ public class Main {
         } */
    }
     
-    public static void getTSV_Data(String fileName) throws Exception {
+    public static void getTsvData(String fileName) throws Exception {
 
         // new approach here
         List<Product> products = CsvUtil.importFrom(fileName, '\t');
